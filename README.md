@@ -1,19 +1,23 @@
-# Content Extraction Engine
+# Link2Learn
 
-A Python-based web API service that extracts meaningful educational content from HTML webpages, removing navigation, ads, footers, and other non-educational elements.
+Link2Learn is a polished educational pipeline that transforms web resources into exam-ready learning artifacts:
 
-## Features
+- Clean, structured notes
+- Hierarchical knowledge graph ready for visualization
+- Definition, concept, and application flashcards
+- High-quality MCQs with plausible distractors and difficulty labels
 
-- **Clean Content Extraction**: Extracts only meaningful educational content (titles, headings, paragraphs)
-- **Intelligent Filtering**: Automatically removes:
-  - Navigation menus
-  - Advertisements and sponsored content
-  - Footers
-  - Scripts and styles
-  - Common ad patterns (banners, sidebars, widgets)
-- **Structured Output**: Returns clean JSON with title and organized sections
-- **RESTful API**: Easy-to-use FastAPI endpoints
-- **Comprehensive Tests**: Full test coverage with realistic examples
+## Project Structure
+
+- `src/`
+  - `api.py` — FastAPI service
+  - `ui.py` — Streamlit interactive experience
+  - `core/` — extraction, semantic chunking, graph, and pipeline modules
+- `scripts/`
+  - `run_api.py` — launch the API server
+  - `run_pipeline.py` — run the pipeline from the command line
+- `tests/` — unit and integration tests
+- `docs/` — architecture and reference documentation
 
 ## Installation
 
@@ -44,10 +48,18 @@ pip install -r requirements.txt
 ### Starting the API Server
 
 ```bash
-python main.py
+python scripts/run_api.py
 ```
 
 The server will start at `http://localhost:8000`
+
+### Running the Streamlit UI
+
+```bash
+streamlit run src/ui.py
+```
+
+Use the app to paste educational URLs and generate structured notes, graph visualizations, flashcards, and MCQs.
 
 ### API Documentation
 
@@ -226,10 +238,13 @@ The API always returns data in the following JSON structure:
 
 ### Files
 
-- `extractor.py` - Core extraction logic
-- `main.py` - FastAPI web service
-- `test_extractor.py` - Unit tests for extractor
-- `test_api.py` - Integration tests for API
+- `src/` - main application package
+  - `api.py` - FastAPI service
+  - `ui.py` - Streamlit user interface
+  - `core/` - core pipeline modules for extraction and graph construction
+- `scripts/` - runnable entrypoints
+- `tests/` - unit and integration tests
+- `docs/` - architecture documentation
 - `requirements.txt` - Python dependencies
 
 ### Key Classes

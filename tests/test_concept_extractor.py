@@ -1,7 +1,14 @@
 """Test suite for concept extraction engine."""
 
 import pytest
-from concept_extractor import ConceptExtractor, ConceptExtractionMode
+from src.core.concept_extractor import (
+    ConceptExtractor,
+    ConceptExtractionMode,
+    Concept,
+    ConceptChunk,
+    StructuredConcepts,
+    chunks_to_flashcards,
+)
 
 
 # Sample sections data
@@ -189,6 +196,84 @@ class TestConceptExtractor:
             assert concept.example is None or isinstance(concept.example, str)
             assert isinstance(concept.prerequisites, list)
             assert isinstance(concept.related_concepts, list)
+
+    def test_chunk_conversion(self):
+        """Test conversion of structured concepts into semantic chunks."""
+        extractor = ConceptExtractor("", mode=ConceptExtractionMode.HEURISTIC)
+        result = extractor.extract(sections=SAMPLE_SECTIONS_PHOTOSYNTHESIS)
+        chunks = result.to_chunks()
+
+        assert isinstance(chunks, dict)
+        assert 'chunks' in chunks
+        assert isinstance(chunks['chunks'], list)
+        assert len(chunks['chunks']) == len(result.concepts)
+
+        for chunk in chunks['chunks']:
+            assert isinstance(chunk, dict)
+            assert 'concept' in chunk
+            assert 'content' in chunk
+            assert 'topic' in chunk or chunk.get('topic') is None
+            assert chunk['concept']
+            assert isinstance(chunk['content'], str)
+
+    def test_graph_generation(self):
+        """Test that structured concepts produce a valid graph."""
+        structured = StructuredConcepts(
+            concepts=[
+                Concept(
+                    name="Photosynthesis",
+                    definition="Photosynthesis converts light into chemical energy.",
+                    prerequisites=["Light reactions"],
+                    related_concepts=["Calvin cycle"]
+                ),
+                Concept(
+                    name="Calvin cycle",
+                    definition="The Calvin cycle fixes carbon dioxide.",
+                    prerequisites=["ATP", "NADPH"],
+                    related_concepts=["Photosynthesis"]
+                )
+            ]
+        )
+
+        graph = structured.to_graph()
+        assert isinstance(graph, dict) or hasattr(graph, 'nodes')
+        assert "Photosynthesis" in graph.nodes
+        assert "Calvin cycle" in graph.nodes
+        assert any(edge.type == "parent-child" for edge in graph.edges)
+        assert any(edge.type == "related-concept" for edge in graph.edges)
+
+    def test_flashcard_generation_from_chunks(self):
+        """Test flashcard generation from concept chunks."""
+        chunks = [
+            ConceptChunk(
+                concept="Photosynthesis",
+                content=(
+                    "Photosynthesis is a process used by plants to convert light into chemical energy. "
+                    "Key points: It produces oxygen; It stores energy in glucose. "
+                    "Example: Plants make glucose using sunlight. "
+                    "Prerequisites: Light reactions"
+                )
+            )
+        ]
+
+        result = chunks_to_flashcards(chunks)
+        assert isinstance(result, dict)
+        assert 'flashcards' in result
+        assert len(result['flashcards']) >= 3
+
+        flashcard_types = {card['type'] for card in result['flashcards']}
+        assert {'definition', 'concept', 'application'}.issubset(flashcard_types)
+
+    def test_extract_chunks(self):
+        """Test direct chunk extraction from the extractor."""
+        extractor = ConceptExtractor("", mode=ConceptExtractionMode.HEURISTIC)
+        chunks = extractor.extract_chunks(sections=SAMPLE_SECTIONS_MACHINE_LEARNING)
+
+        assert isinstance(chunks, dict)
+        assert 'chunks' in chunks
+        assert isinstance(chunks['chunks'], list)
+        assert len(chunks['chunks']) > 0
+        assert all('concept' in chunk and 'content' in chunk for chunk in chunks['chunks'])
     
     def test_minimal_content(self):
         """Test extraction from minimal content."""

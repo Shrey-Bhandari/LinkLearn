@@ -1,6 +1,6 @@
 """Example usage of the content extraction engine."""
 
-from extractor import ContentExtractor
+from src.core.extractor import ContentExtractor
 import json
 
 

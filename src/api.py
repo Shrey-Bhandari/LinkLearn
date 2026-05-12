@@ -2,8 +2,16 @@
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from extractor import ContentExtractor, ExtractedContent
-from concept_extractor import ConceptExtractor, StructuredConcepts, ConceptExtractionMode
+from typing import Optional
+from .core.extractor import ContentExtractor, ExtractedContent
+from .core.concept_extractor import (
+    ConceptExtractor,
+    StructuredConcepts,
+    ConceptExtractionMode,
+    KnowledgeGraph,
+    FlashcardsResponse,
+    chunks_to_flashcards,
+)
 
 
 app = FastAPI(
@@ -22,6 +30,23 @@ class ConceptExtractionRequest(BaseModel):
     """Request model for concept extraction."""
     sections: list[dict]  # From extracted content
     mode: str = "heuristic"  # heuristic, llm, or hybrid
+
+
+class ConceptChunk(BaseModel):
+    """Response model for a semantic concept chunk."""
+    concept: str
+    content: str
+    topic: Optional[str] = None
+
+
+class ConceptFlashcardRequest(BaseModel):
+    """Request model for concept flashcard generation."""
+    chunks: list[ConceptChunk]
+
+
+class ConceptChunksResponse(BaseModel):
+    """Response model containing semantic chunks."""
+    chunks: list[ConceptChunk]
 
 
 @app.post("/extract", response_model=ExtractedContent)
@@ -104,6 +129,85 @@ async def structure_concepts(request: ConceptExtractionRequest) -> StructuredCon
         raise HTTPException(
             status_code=500,
             detail=f"Error structuring concepts: {str(e)}"
+        )
+
+
+@app.post("/concept-graph", response_model=KnowledgeGraph)
+async def concept_graph(request: ConceptExtractionRequest) -> KnowledgeGraph:
+    """Build a concept knowledge graph from extracted sections."""
+    if not request.sections:
+        raise HTTPException(status_code=400, detail="No sections provided")
+
+    try:
+        try:
+            mode = ConceptExtractionMode(request.mode)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid mode. Use: {', '.join([m.value for m in ConceptExtractionMode])}"
+            )
+
+        extractor = ConceptExtractor("", mode=mode)
+        structured = extractor.extract(sections=request.sections)
+
+        if not structured.concepts:
+            raise HTTPException(
+                status_code=422,
+                detail="No concepts could be extracted from provided sections"
+            )
+
+        return structured.to_graph()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error building concept graph: {str(e)}"
+        )
+
+
+@app.post("/chunk-concepts", response_model=ConceptChunksResponse)
+async def chunk_concepts(request: ConceptExtractionRequest) -> ConceptChunksResponse:
+    """Structure content into semantic chunks for one concept per chunk."""
+    if not request.sections:
+        raise HTTPException(status_code=400, detail="No sections provided")
+
+    try:
+        try:
+            mode = ConceptExtractionMode(request.mode)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid mode. Use: {', '.join([m.value for m in ConceptExtractionMode])}"
+            )
+
+        extractor = ConceptExtractor("", mode=mode)
+        chunks_data = extractor.extract_chunks(sections=request.sections)
+        return ConceptChunksResponse(**chunks_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error chunking concepts: {str(e)}"
+        )
+
+
+@app.post("/flashcards", response_model=FlashcardsResponse)
+async def generate_flashcards(request: ConceptFlashcardRequest) -> FlashcardsResponse:
+    """Generate flashcards from semantic concept chunks."""
+    if not request.chunks:
+        raise HTTPException(status_code=400, detail="No chunks provided")
+
+    try:
+        flashcard_data = chunks_to_flashcards(request.chunks)
+        return FlashcardsResponse(**flashcard_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating flashcards: {str(e)}"
         )
 
 

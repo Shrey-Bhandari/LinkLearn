@@ -9,6 +9,7 @@ class Section(BaseModel):
     """Represents a section with heading and content."""
     heading: str
     content: str
+    level: Optional[int] = None
 
 
 class ExtractedContent(BaseModel):
@@ -94,11 +95,16 @@ class ContentExtractor:
                     content_text = ' '.join(current_content).strip()
                     if content_text:
                         result.sections.append(
-                            Section(heading=current_heading, content=content_text)
+                            Section(
+                                heading=current_heading,
+                                content=content_text,
+                                level=current_level
+                            )
                         )
                 
                 # Start new section
                 current_heading = self._extract_text(element)
+                current_level = int(element.name[1])
                 current_content = []
             
             elif element.name == 'p' and current_heading:

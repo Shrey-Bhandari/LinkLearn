@@ -1,7 +1,7 @@
 """Test suite for content extraction engine."""
 
 import pytest
-from extractor import ContentExtractor
+from src.core.extractor import ContentExtractor
 
 
 # Sample HTML for testing

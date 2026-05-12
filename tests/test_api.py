@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from main import app
+from src.api import app
 
 
 client = TestClient(app)
@@ -148,6 +148,57 @@ class TestConceptExtractionAPI:
         data = response.json()
         assert "concepts" in data
         assert len(data["concepts"]) > 0
+
+    def test_concept_graph_endpoint(self):
+        """Test the concept graph endpoint."""
+        sections = [
+            {
+                "heading": "Photosynthesis",
+                "content": "Photosynthesis is a process that converts light into chemical energy. It requires light reactions."
+            },
+            {
+                "heading": "Light reactions",
+                "content": "Light reactions produce ATP and NADPH for the Calvin cycle."
+            }
+        ]
+
+        response = client.post(
+            "/concept-graph",
+            json={"sections": sections, "mode": "heuristic"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "nodes" in data
+        assert "edges" in data
+        assert any(edge["type"] == "parent-child" for edge in data["edges"])
+        assert any("Photosynthesis" in node for node in data["nodes"])
+
+    def test_flashcards_endpoint(self):
+        """Test the flashcards endpoint."""
+        chunks = [
+            {
+                "concept": "Photosynthesis",
+                "content": (
+                    "Photosynthesis is a process used by plants to convert light into chemical energy. "
+                    "Key points: It produces oxygen; It stores energy in glucose. "
+                    "Example: Plants make glucose using sunlight. "
+                    "Prerequisites: Light reactions"
+                )
+            }
+        ]
+
+        response = client.post(
+            "/flashcards",
+            json={"chunks": chunks}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "flashcards" in data
+        assert len(data["flashcards"]) >= 3
+        types = {card["type"] for card in data["flashcards"]}
+        assert {"definition", "concept", "application"}.issubset(types)
     
     def test_structure_concepts_response_format(self):
         """Test that concept response format is correct."""
